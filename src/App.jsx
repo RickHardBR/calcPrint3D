@@ -3,6 +3,7 @@ import styled, { ThemeProvider } from 'styled-components';
 import { theme } from './styles/theme';
 import { GlobalStyle } from './styles/GlobalStyle';
 import { printers, filamentBrands, filamentTypes } from './data/mockData';
+import { distribuidorasData } from './data/distribuidoras';
 import { Card, Title, InputGroup, Label, Input, Select, Row } from './components/shared';
 import { ResultSummary } from './components/ResultSummary';
 import { Printer, Box, Clock, Zap, DollarSign, DownloadCloud, Loader2 } from 'lucide-react';
@@ -95,99 +96,34 @@ function App() {
   const [profitMargin, setProfitMargin] = useState(100); 
   const [failureRate, setFailureRate] = useState(5); 
 
-  // API Estados
   const [distribuidoras, setDistribuidoras] = useState([]);
   const [selectedDistribuidora, setSelectedDistribuidora] = useState('');
   const [selectedUF, setSelectedUF] = useState('');
-  const [loadingDist, setLoadingDist] = useState(false);
-  const [loadingTarifa, setLoadingTarifa] = useState(false);
-  const [apiError, setApiError] = useState('');
 
   const UFS = ["AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA", "MT", "MS", "MG", "PA", "PB", "PR", "PE", "PI", "RJ", "RN", "RS", "RO", "RR", "SC", "SP", "SE", "TO"];
 
-  const MOCK_DISTRIBUIDORAS = [
-    { nome: 'CEMIG (MG)', tarifaB1: 0.95 },
-    { nome: 'ENEL (SP)', tarifaB1: 0.89 },
-    { nome: 'Light (RJ)', tarifaB1: 1.05 },
-    { nome: 'Copel (PR)', tarifaB1: 0.85 },
-    { nome: 'Neoenergia (BA)', tarifaB1: 0.92 },
-    { nome: 'Equatorial (PA/MA)', tarifaB1: 0.98 }
-  ];
-
-  // Acordar API no início, sem buscar todas
+  // Filtro de Distribuidoras Locais
   useEffect(() => {
-    fetch('/api/carregar-cache', { signal: AbortSignal.timeout(6000) }).catch(() => {});
-  }, []);
-
-  // Buscar Distribuidoras por UF
-  useEffect(() => {
-    const fetchDistribuidorasPorUF = async () => {
-      if (!selectedUF) {
-        setDistribuidoras([]);
-        setSelectedDistribuidora('');
-        return;
-      }
-      
-      setLoadingDist(true);
-      setApiError('');
-      try {
-        const res = await fetch(`/api/distribuidoras/estado/${selectedUF}`, { signal: AbortSignal.timeout(8000) });
-        if (!res.ok) throw new Error('Falha HTTP');
-        const data = await res.json();
-        
-        if (data && data.sucesso && data.dados) {
-          setDistribuidoras(data.dados.sort((a, b) => a.nome.localeCompare(b.nome)));
-          setSelectedDistribuidora(''); // reseta distribuidora ao trocar de estado
-        } else {
-          throw new Error('Formato inválido');
-        }
-      } catch (err) {
-        setApiError(`A API falhou ao buscar distribuidoras de ${selectedUF}.`);
-        // Fallback simples para o mock se falhar
-        setDistribuidoras(MOCK_DISTRIBUIDORAS);
-      } finally {
-        setLoadingDist(false);
-      }
-    };
-    fetchDistribuidorasPorUF();
+    if (!selectedUF) {
+      setDistribuidoras([]);
+      setSelectedDistribuidora('');
+      return;
+    }
+    const ufDist = distribuidorasData
+      .filter(d => d.uf === selectedUF)
+      .sort((a, b) => a.nome.localeCompare(b.nome));
+    setDistribuidoras(ufDist);
+    setSelectedDistribuidora('');
   }, [selectedUF]);
 
-  // Buscar tarifa ao selecionar distribuidora
+  // Buscar tarifa local
   useEffect(() => {
-    const fetchTarifa = async () => {
-      if (!selectedDistribuidora) return;
-      setLoadingTarifa(true);
-      setApiError('');
-      try {
-        const res = await fetch(`/api/distribuidoras/buscar?nome=${selectedDistribuidora}`, { signal: AbortSignal.timeout(4000) });
-        if (!res.ok) throw new Error('Falha HTTP');
-        const data = await res.json();
-        
-        // A API retorna algo como: { sucesso: true, dados: [{ tarifa_energia_kwh: 0.749 }] }
-        let tarifa = 0;
-        if (data && data.sucesso && data.dados && data.dados.length > 0) {
-          tarifa = data.dados[0].tarifa_energia_kwh || data.dados[0].tarifaB1 || data.dados[0].tarifa || data.dados[0].valor;
-        }
-        
-        if (tarifa) {
-          setEnergyTariff(parseFloat(tarifa).toFixed(2));
-        } else {
-          throw new Error('Formato desconhecido');
-        }
-      } catch (err) {
-        // Fallback para o modo offline (pegar da mock list)
-        const mockMatch = MOCK_DISTRIBUIDORAS.find(d => d.nome === selectedDistribuidora);
-        if (mockMatch) {
-          setEnergyTariff(mockMatch.tarifaB1.toFixed(2));
-        } else {
-          setApiError('Erro ao consultar a tarifa da operadora.');
-        }
-      } finally {
-        setLoadingTarifa(false);
-      }
-    };
-    fetchTarifa();
-  }, [selectedDistribuidora]);
+    if (!selectedDistribuidora) return;
+    const dist = distribuidoras.find(d => d.nome === selectedDistribuidora);
+    if (dist) {
+      setEnergyTariff(dist.tarifaB1);
+    }
+  }, [selectedDistribuidora, distribuidoras]);
 
   useEffect(() => {
     if (selectedPrinter !== 'custom') {
@@ -342,33 +278,25 @@ function App() {
             </InputGroup>
 
             <InputGroup style={{ flex: 2 }}>
-              <Label>
-                Distribuidora
-                {loadingDist && <Loader2 size={14} style={{ marginLeft: 8 }} className="spin" />}
-              </Label>
+              <Label>Distribuidora</Label>
               <Select 
                 value={selectedDistribuidora} 
                 onChange={(e) => setSelectedDistribuidora(e.target.value)}
-                disabled={!selectedUF || loadingDist || distribuidoras.length === 0}
+                disabled={!selectedUF || distribuidoras.length === 0}
               >
                 <option value="">
                   {!selectedUF ? "Selecione o UF primeiro" : "Selecione a distribuidora..."}
                 </option>
                 {distribuidoras.map(d => (
-                  <option key={d.slug || d.nome} value={d.nome}>{d.nome}</option>
+                  <option key={d.nome} value={d.nome}>{d.nome}</option>
                 ))}
               </Select>
             </InputGroup>
           </Row>
 
-          {apiError && <div style={{ color: '#F44336', fontSize: '0.85rem', marginBottom: '10px' }}>{apiError}</div>}
-
           <Row>
             <InputGroup>
-              <Label>
-                Tarifa de Energia (R$/kWh)
-                {loadingTarifa && <Loader2 size={12} className="lucide-spin" style={{ marginLeft: 8 }} />}
-              </Label>
+              <Label>Tarifa de Energia (R$/kWh)</Label>
               <Input 
                 type="number" 
                 step="0.01"
