@@ -43,8 +43,9 @@ const FinalPrice = styled.div`
 
   @media (max-width: 600px) {
     flex-direction: column;
-    align-items: flex-start;
-    gap: 12px;
+    align-items: center;
+    text-align: center;
+    gap: 8px;
   }
 `;
 

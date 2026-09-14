@@ -21,8 +21,30 @@ const MainTitle = styled.h1`
 
   @media (max-width: 600px) {
     font-size: 1.8rem;
+    margin-bottom: 12px;
+  }
+`;
+
+const SubTitle = styled.p`
+  text-align: center;
+  color: ${({ theme }) => theme.colors.textLight};
+  font-size: 1.1rem;
+  margin-bottom: 40px;
+  line-height: 1.5;
+
+  @media (max-width: 600px) {
+    font-size: 0.95rem;
     margin-bottom: 24px;
   }
+`;
+
+const Footer = styled.footer`
+  text-align: center;
+  padding-top: 32px;
+  margin-top: 32px;
+  border-top: 1px solid ${({ theme }) => theme.colors.border};
+  color: ${({ theme }) => theme.colors.textLight};
+  font-size: 0.85rem;
 `;
 
 function App() {
@@ -179,6 +201,9 @@ function App() {
       <GlobalStyle />
       <Container>
         <MainTitle>Calculadora de Custos 3D</MainTitle>
+        <SubTitle>
+          Precifique suas impressões 3D com precisão. Ferramenta automatizada para calcular o preço ideal de venda considerando filamento, consumo elétrico, desgaste e margem de lucro.
+        </SubTitle>
 
         <Card>
           <Title><Printer size={20} /> Equipamento (Impressora 3D)</Title>
@@ -335,6 +360,9 @@ function App() {
 
         <ResultSummary costs={costs} />
 
+        <Footer>
+          &copy; {new Date().getFullYear()} Desenvolvido por RickHardBR. Todos os direitos reservados.
+        </Footer>
       </Container>
     </ThemeProvider>
   );
