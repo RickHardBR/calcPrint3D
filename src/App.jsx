@@ -13,37 +13,58 @@ const Container = styled.div`
   padding: 32px 16px;
 `;
 
-const Logo = styled.img`
-  display: block;
-  margin: 0 auto 16px auto;
-  width: 80px;
-  height: 80px;
-  border-radius: 20px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+const HeaderWrapper = styled.div`
+  margin-bottom: 40px;
+
+  @media (max-width: 600px) {
+    margin-bottom: 24px;
+  }
 `;
 
 const MainTitle = styled.h1`
   color: ${({ theme }) => theme.colors.primary};
   text-align: center;
-  margin-bottom: 32px;
+  margin-bottom: 24px;
   font-weight: 700;
 
   @media (max-width: 600px) {
     font-size: 1.8rem;
-    margin-bottom: 12px;
+    margin-bottom: 16px;
   }
 `;
 
+const HeaderContent = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+
+  @media (max-width: 600px) {
+    flex-direction: column;
+    text-align: center;
+    gap: 16px;
+  }
+`;
+
+const Logo = styled.img`
+  width: 90px;
+  height: 90px;
+  border-radius: 20px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  flex-shrink: 0;
+`;
+
 const SubTitle = styled.p`
-  text-align: center;
   color: ${({ theme }) => theme.colors.textLight};
   font-size: 1.1rem;
-  margin-bottom: 40px;
   line-height: 1.5;
+  text-align: left;
+  max-width: 600px;
+  margin: 0;
 
   @media (max-width: 600px) {
     font-size: 0.95rem;
-    margin-bottom: 24px;
+    text-align: center;
   }
 `;
 
@@ -209,11 +230,15 @@ function App() {
     <ThemeProvider theme={theme}>
       <GlobalStyle />
       <Container>
-        <Logo src="/favicon.png" alt="Logo Calculadora de Custos 3D" />
-        <MainTitle>Calculadora de Custos 3D</MainTitle>
-        <SubTitle>
-          Precifique suas impressões 3D com precisão. Ferramenta automatizada para calcular o preço ideal de venda considerando filamento, consumo elétrico, desgaste e margem de lucro.
-        </SubTitle>
+        <HeaderWrapper>
+          <MainTitle>Calculadora de Custos 3D</MainTitle>
+          <HeaderContent>
+            <Logo src="/favicon.png" alt="Logo Calculadora de Custos 3D" />
+            <SubTitle>
+              Precifique suas impressões 3D com precisão. Ferramenta automatizada para calcular o preço ideal de venda considerando filamento, consumo elétrico, desgaste e margem de lucro.
+            </SubTitle>
+          </HeaderContent>
+        </HeaderWrapper>
 
         <Card>
           <Title><Printer size={20} /> Equipamento (Impressora 3D)</Title>
