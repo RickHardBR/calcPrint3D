@@ -40,6 +40,12 @@ const FinalPrice = styled.div`
   justify-content: space-between;
   align-items: center;
   margin-top: 16px;
+
+  @media (max-width: 600px) {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
 `;
 
 const PriceLabel = styled.span`

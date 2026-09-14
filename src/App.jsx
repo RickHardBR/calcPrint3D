@@ -17,8 +17,12 @@ const MainTitle = styled.h1`
   color: ${({ theme }) => theme.colors.primary};
   text-align: center;
   margin-bottom: 32px;
-  font-size: 2.2rem;
   font-weight: 700;
+
+  @media (max-width: 600px) {
+    font-size: 1.8rem;
+    margin-bottom: 24px;
+  }
 `;
 
 function App() {
