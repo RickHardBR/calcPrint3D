@@ -69,7 +69,18 @@ function App() {
         const data = await res.json();
         
         if (data && data.sucesso && data.dados) {
-          setDistribuidoras(data.dados);
+          // A API ultimamente tem retornado apenas 2 operadoras por instabilidade no cache da ANEEL.
+          // Para contornar, mesclamos a nossa lista MOCK com o que a API encontrar, removendo duplicatas
+          const apiList = data.dados;
+          const mergedList = [...apiList];
+          
+          MOCK_DISTRIBUIDORAS.forEach(mockItem => {
+            if (!mergedList.find(d => d.nome === mockItem.nome)) {
+              mergedList.push(mockItem);
+            }
+          });
+          
+          setDistribuidoras(mergedList.sort((a, b) => a.nome.localeCompare(b.nome)));
         } else {
           throw new Error('Formato inválido');
         }
