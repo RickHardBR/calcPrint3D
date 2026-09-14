@@ -1,5 +1,7 @@
 # 🖨️ Calculadora de Custos de Impressão 3D
 
+**Acesse a versão online aqui:** [Calculadora 3D](https://calc-print3-d.vercel.app/)
+
 Bem-vindo à **Calculadora de Custos de Impressão 3D**, uma ferramenta web moderna, construída com React e Vite, focada em fornecer precisão absoluta para makers e empreendedores no momento de precificar suas peças impressas em 3D.
 
 ![Calculadora de Custos de Impressão 3D](public/favicon.png)
