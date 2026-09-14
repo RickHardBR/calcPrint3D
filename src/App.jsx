@@ -61,10 +61,18 @@ function App() {
       console.log("Iniciando fetch com proxy local /api...");
       setLoadingDist(true);
       try {
-        const res = await fetch('/api/distribuidoras/selecionaveis', { signal: AbortSignal.timeout(4000) });
+        // Carrega o cache primeiro, pois se a API estava inativa ele vem vazio
+        await fetch('/api/carregar-cache', { signal: AbortSignal.timeout(6000) }).catch(() => {});
+        
+        const res = await fetch('/api/distribuidoras/selecionaveis', { signal: AbortSignal.timeout(6000) });
         if (!res.ok) throw new Error('Falha HTTP');
         const data = await res.json();
-        setDistribuidoras(data || []);
+        
+        if (data && data.sucesso && data.dados) {
+          setDistribuidoras(data.dados);
+        } else {
+          throw new Error('Formato inválido');
+        }
       } catch (err) {
         setApiError('A API pública está fora do ar (Render). Usando valores médios locais.');
         setDistribuidoras(MOCK_DISTRIBUIDORAS);
@@ -86,7 +94,12 @@ function App() {
         if (!res.ok) throw new Error('Falha HTTP');
         const data = await res.json();
         
-        const tarifa = data.tarifaB1 || data.tarifa || data.tarifa_convencional || data.valor;
+        // A API retorna algo como: { sucesso: true, dados: [{ tarifa_energia_kwh: 0.749 }] }
+        let tarifa = 0;
+        if (data && data.sucesso && data.dados && data.dados.length > 0) {
+          tarifa = data.dados[0].tarifa_energia_kwh || data.dados[0].tarifaB1 || data.dados[0].tarifa || data.dados[0].valor;
+        }
+        
         if (tarifa) {
           setEnergyTariff(parseFloat(tarifa).toFixed(2));
         } else {
