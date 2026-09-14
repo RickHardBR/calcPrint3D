@@ -15,6 +15,34 @@ A calculadora foi desenvolvida do zero para oferecer todas as variáveis essenci
 - **Resumo Inteligente:** Um painel dinâmico exibe os custos separados (Material, Energia, Depreciação), o Custo Total e o **Preço Final Sugerido de Venda**.
 - **Layout Responsivo:** A interface se adapta perfeitamente para computadores, tablets e telas de celular (mobile-friendly), exibindo tudo de forma alinhada.
 
+## 🧮 Como os Custos são Calculados (Fórmulas)
+
+Para garantir precisão centavo a centavo, a calculadora utiliza as seguintes fórmulas sob o capô:
+
+1. **Custo do Material (Filamento):**
+   `Custo = (Peso da peça em gramas ÷ 1000) × Preço do carretel de 1kg`
+   *A ideia aqui é cobrar proporcionalmente à fração de quilograma exata que a peça consome.*
+
+2. **Custo de Energia Elétrica:**
+   `Tempo Total (em horas) = Horas + (Minutos ÷ 60)`
+   `Custo = Tempo Total × (Consumo da Máquina em Watts ÷ 1000) × Tarifa da Concessionária (R$/kWh)`
+   *Isso converte o tempo total e os Watts consumidos em kWh, multiplicando pelo valor da energia da sua região.*
+
+3. **Custo de Depreciação (Desgaste da Máquina):**
+   `Custo = Tempo Total (em horas) × Taxa de Desgaste por Hora (R$/h)`
+   *Toda impressora tem uma vida útil e peças descartáveis (bicos, correias). Cobrar um valor fixo (ex: R$ 1,50) por hora de impressão garante que a máquina pague a própria manutenção.*
+
+4. **Custo Total de Produção:**
+   `Custo Produção = Material + Energia + Depreciação`
+
+5. **Acréscimo de Taxa de Falha:**
+   `Custo Ajustado = Custo Produção × (1 + (Taxa de Falha % ÷ 100))`
+   *Impressão 3D falha. Se você colocar 5% de margem de falha, o preço absorve a probabilidade estatística de você perder peças ao longo do mês, sem tirar do seu lucro.*
+
+6. **Preço Final de Venda Sugerido:**
+   `Preço Final = Custo Ajustado × (1 + (Margem de Lucro % ÷ 100))`
+   *Calcula a venda real (lucro limpo) com base no total gasto, pronto para ser passado ao cliente!*
+
 ## 🛠️ Tecnologias Utilizadas
 
 - **React 18** (Functional Components + Hooks)
