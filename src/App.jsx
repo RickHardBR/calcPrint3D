@@ -13,6 +13,15 @@ const Container = styled.div`
   padding: 32px 16px;
 `;
 
+const Logo = styled.img`
+  display: block;
+  margin: 0 auto 16px auto;
+  width: 80px;
+  height: 80px;
+  border-radius: 20px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+`;
+
 const MainTitle = styled.h1`
   color: ${({ theme }) => theme.colors.primary};
   text-align: center;
@@ -200,6 +209,7 @@ function App() {
     <ThemeProvider theme={theme}>
       <GlobalStyle />
       <Container>
+        <Logo src="/favicon.png" alt="Logo Calculadora de Custos 3D" />
         <MainTitle>Calculadora de Custos 3D</MainTitle>
         <SubTitle>
           Precifique suas impressões 3D com precisão. Ferramenta automatizada para calcular o preço ideal de venda considerando filamento, consumo elétrico, desgaste e margem de lucro.
