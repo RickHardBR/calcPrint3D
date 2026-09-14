@@ -1,0 +1,315 @@
+import React, { useState, useEffect, useMemo } from 'react';
+import styled, { ThemeProvider } from 'styled-components';
+import { theme } from './styles/theme';
+import { GlobalStyle } from './styles/GlobalStyle';
+import { printers, filamentBrands, filamentTypes } from './data/mockData';
+import { Card, Title, InputGroup, Label, Input, Select, Row } from './components/shared';
+import { ResultSummary } from './components/ResultSummary';
+import { Printer, Box, Clock, Zap, DollarSign, DownloadCloud, Loader2 } from 'lucide-react';
+
+const Container = styled.div`
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 32px 16px;
+`;
+
+const MainTitle = styled.h1`
+  color: ${({ theme }) => theme.colors.primary};
+  text-align: center;
+  margin-bottom: 32px;
+  font-size: 2.2rem;
+  font-weight: 700;
+`;
+
+function App() {
+  const [selectedPrinter, setSelectedPrinter] = useState(printers[0].id);
+  const [powerW, setPowerW] = useState(printers[0].powerW);
+
+  const [filamentBrand, setFilamentBrand] = useState(filamentBrands[0].id);
+  const [filamentType, setFilamentType] = useState(filamentTypes[0].id);
+  const [filamentPriceKg, setFilamentPriceKg] = useState(110);
+
+  const [printWeightGrams, setPrintWeightGrams] = useState('');
+  const [printTimeHours, setPrintTimeHours] = useState('');
+  const [printTimeMinutes, setPrintTimeMinutes] = useState('');
+
+  const [energyTariff, setEnergyTariff] = useState(1.15); 
+  const [machineDepreciationRate, setMachineDepreciationRate] = useState(1.50);
+
+  const [profitMargin, setProfitMargin] = useState(100); 
+  const [failureRate, setFailureRate] = useState(5); 
+
+  // API Estados
+  const [distribuidoras, setDistribuidoras] = useState([]);
+  const [selectedDistribuidora, setSelectedDistribuidora] = useState('');
+  const [loadingDist, setLoadingDist] = useState(false);
+  const [loadingTarifa, setLoadingTarifa] = useState(false);
+  const [apiError, setApiError] = useState('');
+
+  const MOCK_DISTRIBUIDORAS = [
+    { nome: 'CEMIG (MG)', tarifaB1: 0.95 },
+    { nome: 'ENEL (SP)', tarifaB1: 0.89 },
+    { nome: 'Light (RJ)', tarifaB1: 1.05 },
+    { nome: 'Copel (PR)', tarifaB1: 0.85 },
+    { nome: 'Neoenergia (BA)', tarifaB1: 0.92 },
+    { nome: 'Equatorial (PA/MA)', tarifaB1: 0.98 }
+  ];
+
+  // Buscar Distribuidoras ao montar
+  useEffect(() => {
+    const fetchDistribuidoras = async () => {
+      console.log("Iniciando fetch com proxy local /api...");
+      setLoadingDist(true);
+      try {
+        const res = await fetch('/api/distribuidoras/selecionaveis', { signal: AbortSignal.timeout(4000) });
+        if (!res.ok) throw new Error('Falha HTTP');
+        const data = await res.json();
+        setDistribuidoras(data || []);
+      } catch (err) {
+        setApiError('A API pública está fora do ar (Render). Usando valores médios locais.');
+        setDistribuidoras(MOCK_DISTRIBUIDORAS);
+      } finally {
+        setLoadingDist(false);
+      }
+    };
+    fetchDistribuidoras();
+  }, []);
+
+  // Buscar tarifa ao selecionar distribuidora
+  useEffect(() => {
+    const fetchTarifa = async () => {
+      if (!selectedDistribuidora) return;
+      setLoadingTarifa(true);
+      setApiError('');
+      try {
+        const res = await fetch(`/api/distribuidoras/buscar?nome=${selectedDistribuidora}`, { signal: AbortSignal.timeout(4000) });
+        if (!res.ok) throw new Error('Falha HTTP');
+        const data = await res.json();
+        
+        const tarifa = data.tarifaB1 || data.tarifa || data.tarifa_convencional || data.valor;
+        if (tarifa) {
+          setEnergyTariff(parseFloat(tarifa).toFixed(2));
+        } else {
+          throw new Error('Formato desconhecido');
+        }
+      } catch (err) {
+        // Fallback para o modo offline (pegar da mock list)
+        const mockMatch = MOCK_DISTRIBUIDORAS.find(d => d.nome === selectedDistribuidora);
+        if (mockMatch) {
+          setEnergyTariff(mockMatch.tarifaB1.toFixed(2));
+        } else {
+          setApiError('Erro ao consultar a tarifa da operadora.');
+        }
+      } finally {
+        setLoadingTarifa(false);
+      }
+    };
+    fetchTarifa();
+  }, [selectedDistribuidora]);
+
+  useEffect(() => {
+    if (selectedPrinter !== 'custom') {
+      const printer = printers.find(p => p.id === selectedPrinter);
+      if (printer) setPowerW(printer.powerW);
+    }
+  }, [selectedPrinter]);
+
+  const costs = useMemo(() => {
+    const wGrams = parseFloat(printWeightGrams) || 0;
+    const priceKg = parseFloat(filamentPriceKg) || 0;
+    const tHours = parseFloat(printTimeHours) || 0;
+    const tMins = parseFloat(printTimeMinutes) || 0;
+    const pW = parseFloat(powerW) || 0;
+    const eTariff = parseFloat(energyTariff) || 0;
+    const mDepRate = parseFloat(machineDepreciationRate) || 0;
+    const fRate = parseFloat(failureRate) || 0;
+    const pMargin = parseFloat(profitMargin) || 0;
+
+    const filamentCost = (wGrams / 1000) * priceKg;
+    const totalTimeHours = tHours + (tMins / 60);
+    const energyCost = totalTimeHours * (pW / 1000) * eTariff;
+    const machineCost = totalTimeHours * mDepRate;
+    
+    const totalProductionCost = filamentCost + energyCost + machineCost;
+    const costWithFailure = totalProductionCost * (1 + (fRate / 100));
+    
+    const suggestedPrice = costWithFailure * (1 + (pMargin / 100));
+    const profitValue = suggestedPrice - totalProductionCost;
+
+    return {
+      filamentCost,
+      energyCost,
+      machineCost,
+      totalProductionCost,
+      profitValue,
+      suggestedPrice
+    };
+  }, [printWeightGrams, filamentPriceKg, printTimeHours, printTimeMinutes, powerW, energyTariff, machineDepreciationRate, failureRate, profitMargin]);
+
+  return (
+    <ThemeProvider theme={theme}>
+      <GlobalStyle />
+      <Container>
+        <MainTitle>Calculadora de Custos 3D</MainTitle>
+
+        <Card>
+          <Title><Printer size={20} /> Equipamento (Impressora 3D)</Title>
+          <Row>
+            <InputGroup>
+              <Label>Modelo da Impressora</Label>
+              <Select value={selectedPrinter} onChange={(e) => setSelectedPrinter(e.target.value)}>
+                {printers.map(p => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
+                ))}
+              </Select>
+            </InputGroup>
+            <InputGroup>
+              <Label>Consumo Médio (Watts)</Label>
+              <Input 
+                type="number" 
+                value={powerW} 
+                onChange={(e) => setPowerW(e.target.value)}
+                disabled={selectedPrinter !== 'custom'}
+              />
+            </InputGroup>
+          </Row>
+        </Card>
+
+        <Card>
+          <Title><Box size={20} /> Filamento e Material</Title>
+          <Row>
+            <InputGroup>
+              <Label>Marca</Label>
+              <Select value={filamentBrand} onChange={(e) => setFilamentBrand(e.target.value)}>
+                {filamentBrands.map(b => (
+                  <option key={b.id} value={b.id}>{b.name}</option>
+                ))}
+              </Select>
+            </InputGroup>
+            <InputGroup>
+              <Label>Tipo</Label>
+              <Select value={filamentType} onChange={(e) => setFilamentType(e.target.value)}>
+                {filamentTypes.map(t => (
+                  <option key={t.id} value={t.id}>{t.name}</option>
+                ))}
+              </Select>
+            </InputGroup>
+            <InputGroup>
+              <Label>Preço do Rolo (R$/kg)</Label>
+              <Input 
+                type="number" 
+                value={filamentPriceKg} 
+                onChange={(e) => setFilamentPriceKg(e.target.value)}
+              />
+            </InputGroup>
+          </Row>
+        </Card>
+
+        <Card>
+          <Title><Clock size={20} /> Dados do Fatiador</Title>
+          <Row>
+            <InputGroup>
+              <Label>Peso Total da Peça com Suportes (g)</Label>
+              <Input 
+                type="number" 
+                value={printWeightGrams} 
+                onChange={(e) => setPrintWeightGrams(e.target.value)}
+                placeholder="Ex: 150"
+              />
+            </InputGroup>
+            <InputGroup>
+              <Label>Tempo (Horas)</Label>
+              <Input 
+                type="number" 
+                value={printTimeHours} 
+                onChange={(e) => setPrintTimeHours(e.target.value)}
+                placeholder="Ex: 5"
+              />
+            </InputGroup>
+            <InputGroup>
+              <Label>Tempo (Minutos)</Label>
+              <Input 
+                type="number" 
+                value={printTimeMinutes} 
+                onChange={(e) => setPrintTimeMinutes(e.target.value)}
+                placeholder="Ex: 30"
+              />
+            </InputGroup>
+          </Row>
+        </Card>
+
+        <Card>
+          <Title><Zap size={20} /> Energia e Custos Operacionais</Title>
+          <Row style={{ alignItems: 'flex-end', marginBottom: '16px' }}>
+            <InputGroup style={{ marginBottom: 0 }}>
+              <Label>
+                Distribuidora (API ANEEL) 
+                {loadingDist && <Loader2 size={12} className="lucide-spin" style={{ marginLeft: 8 }} />}
+              </Label>
+              <Select 
+                value={selectedDistribuidora} 
+                onChange={(e) => setSelectedDistribuidora(e.target.value)}
+              >
+                <option value="">Selecione para buscar online...</option>
+                {distribuidoras.map((d, i) => (
+                  <option key={i} value={d.nome}>{d.nome}</option>
+                ))}
+              </Select>
+            </InputGroup>
+            {apiError && <div style={{ color: '#F44336', fontSize: '0.85rem', marginBottom: '10px' }}>{apiError}</div>}
+          </Row>
+          <Row>
+            <InputGroup>
+              <Label>
+                Tarifa de Energia (R$/kWh)
+                {loadingTarifa && <Loader2 size={12} className="lucide-spin" style={{ marginLeft: 8 }} />}
+              </Label>
+              <Input 
+                type="number" 
+                step="0.01"
+                value={energyTariff} 
+                onChange={(e) => setEnergyTariff(e.target.value)}
+              />
+            </InputGroup>
+            <InputGroup>
+              <Label>Depreciação/Desgaste da Máquina (R$/h)</Label>
+              <Input 
+                type="number" 
+                step="0.1"
+                value={machineDepreciationRate} 
+                onChange={(e) => setMachineDepreciationRate(e.target.value)}
+              />
+            </InputGroup>
+          </Row>
+        </Card>
+
+        <Card>
+          <Title><DollarSign size={20} /> Precificação e Riscos</Title>
+          <Row>
+            <InputGroup>
+              <Label>Taxa de Falha/Risco (%)</Label>
+              <Input 
+                type="number" 
+                value={failureRate} 
+                onChange={(e) => setFailureRate(e.target.value)}
+              />
+            </InputGroup>
+            <InputGroup>
+              <Label>Margem de Lucro Desejada (%)</Label>
+              <Input 
+                type="number" 
+                value={profitMargin} 
+                onChange={(e) => setProfitMargin(e.target.value)}
+              />
+            </InputGroup>
+          </Row>
+        </Card>
+
+        <ResultSummary costs={costs} />
+
+      </Container>
+    </ThemeProvider>
+  );
+}
+
+export default App;
