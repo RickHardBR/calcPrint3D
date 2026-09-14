@@ -98,9 +98,12 @@ function App() {
   // API Estados
   const [distribuidoras, setDistribuidoras] = useState([]);
   const [selectedDistribuidora, setSelectedDistribuidora] = useState('');
+  const [selectedUF, setSelectedUF] = useState('');
   const [loadingDist, setLoadingDist] = useState(false);
   const [loadingTarifa, setLoadingTarifa] = useState(false);
   const [apiError, setApiError] = useState('');
+
+  const UFS = ["AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA", "MT", "MS", "MG", "PA", "PB", "PR", "PE", "PI", "RJ", "RN", "RS", "RO", "RR", "SC", "SP", "SE", "TO"];
 
   const MOCK_DISTRIBUIDORAS = [
     { nome: 'CEMIG (MG)', tarifaB1: 0.95 },
@@ -111,44 +114,43 @@ function App() {
     { nome: 'Equatorial (PA/MA)', tarifaB1: 0.98 }
   ];
 
-  // Buscar Distribuidoras ao montar
+  // Acordar API no início, sem buscar todas
   useEffect(() => {
-    const fetchDistribuidoras = async () => {
-      console.log("Iniciando fetch com proxy local /api...");
+    fetch('/api/carregar-cache', { signal: AbortSignal.timeout(6000) }).catch(() => {});
+  }, []);
+
+  // Buscar Distribuidoras por UF
+  useEffect(() => {
+    const fetchDistribuidorasPorUF = async () => {
+      if (!selectedUF) {
+        setDistribuidoras([]);
+        setSelectedDistribuidora('');
+        return;
+      }
+      
       setLoadingDist(true);
+      setApiError('');
       try {
-        // Carrega o cache primeiro, pois se a API estava inativa ele vem vazio
-        await fetch('/api/carregar-cache', { signal: AbortSignal.timeout(6000) }).catch(() => {});
-        
-        const res = await fetch('/api/distribuidoras/selecionaveis', { signal: AbortSignal.timeout(6000) });
+        const res = await fetch(`/api/distribuidoras/estado/${selectedUF}`, { signal: AbortSignal.timeout(8000) });
         if (!res.ok) throw new Error('Falha HTTP');
         const data = await res.json();
         
         if (data && data.sucesso && data.dados) {
-          // A API ultimamente tem retornado apenas 2 operadoras por instabilidade no cache da ANEEL.
-          // Para contornar, mesclamos a nossa lista MOCK com o que a API encontrar, removendo duplicatas
-          const apiList = data.dados;
-          const mergedList = [...apiList];
-          
-          MOCK_DISTRIBUIDORAS.forEach(mockItem => {
-            if (!mergedList.find(d => d.nome === mockItem.nome)) {
-              mergedList.push(mockItem);
-            }
-          });
-          
-          setDistribuidoras(mergedList.sort((a, b) => a.nome.localeCompare(b.nome)));
+          setDistribuidoras(data.dados.sort((a, b) => a.nome.localeCompare(b.nome)));
+          setSelectedDistribuidora(''); // reseta distribuidora ao trocar de estado
         } else {
           throw new Error('Formato inválido');
         }
       } catch (err) {
-        setApiError('A API pública está fora do ar (Render). Usando valores médios locais.');
+        setApiError(`A API falhou ao buscar distribuidoras de ${selectedUF}.`);
+        // Fallback simples para o mock se falhar
         setDistribuidoras(MOCK_DISTRIBUIDORAS);
       } finally {
         setLoadingDist(false);
       }
     };
-    fetchDistribuidoras();
-  }, []);
+    fetchDistribuidorasPorUF();
+  }, [selectedUF]);
 
   // Buscar tarifa ao selecionar distribuidora
   useEffect(() => {
@@ -328,24 +330,39 @@ function App() {
 
         <Card>
           <Title><Zap size={20} /> Energia e Custos Operacionais</Title>
-          <Row style={{ alignItems: 'flex-end', marginBottom: '16px' }}>
-            <InputGroup style={{ marginBottom: 0 }}>
+          <Row>
+            <InputGroup style={{ flex: 0.8 }}>
+              <Label>Estado (UF)</Label>
+              <Select value={selectedUF} onChange={(e) => setSelectedUF(e.target.value)}>
+                <option value="">UF...</option>
+                {UFS.map(uf => (
+                  <option key={uf} value={uf}>{uf}</option>
+                ))}
+              </Select>
+            </InputGroup>
+
+            <InputGroup style={{ flex: 2 }}>
               <Label>
-                Distribuidora (API ANEEL) 
-                {loadingDist && <Loader2 size={12} className="lucide-spin" style={{ marginLeft: 8 }} />}
+                Distribuidora
+                {loadingDist && <Loader2 size={14} style={{ marginLeft: 8 }} className="spin" />}
               </Label>
               <Select 
                 value={selectedDistribuidora} 
                 onChange={(e) => setSelectedDistribuidora(e.target.value)}
+                disabled={!selectedUF || loadingDist || distribuidoras.length === 0}
               >
-                <option value="">Selecione para buscar online...</option>
-                {distribuidoras.map((d, i) => (
-                  <option key={i} value={d.nome}>{d.nome}</option>
+                <option value="">
+                  {!selectedUF ? "Selecione o UF primeiro" : "Selecione a distribuidora..."}
+                </option>
+                {distribuidoras.map(d => (
+                  <option key={d.slug || d.nome} value={d.nome}>{d.nome}</option>
                 ))}
               </Select>
             </InputGroup>
-            {apiError && <div style={{ color: '#F44336', fontSize: '0.85rem', marginBottom: '10px' }}>{apiError}</div>}
           </Row>
+
+          {apiError && <div style={{ color: '#F44336', fontSize: '0.85rem', marginBottom: '10px' }}>{apiError}</div>}
+
           <Row>
             <InputGroup>
               <Label>
